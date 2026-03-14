@@ -8,16 +8,259 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// NewsAPI 配置（需要替换为您的 API Key）
-const NEWS_API_KEY = process.env.NEWS_API_KEY || 'demo-key';
+// API 配置
+const CONFIG = {
+  gnews: {
+    enabled: process.env.GNEWS_API_KEY ? true : false,
+    apiKey: process.env.GNEWS_API_KEY,
+    url: 'https://gnews.io/api/v4/top-headlines',
+    categoryMap: {
+      '科技': 'technology',
+      '经济': 'business',
+      '国际': 'world',
+      '社会': 'general',
+      '文化': 'science',
+      '文明': 'general'
+    }
+  },
+  juhe: {
+    enabled: process.env.JUHE_API_KEY ? true : false,
+    apiKey: process.env.JUHE_API_KEY,
+    url: 'https://v.juhe.cn/toutiao/index',
+    categoryMap: {
+      '科技': 'tech',
+      '经济': 'finance',
+      '国际': 'world',
+      '社会': 'social',
+      '文化': 'culture',
+      '文明': 'all'
+    }
+  },
+  tianapi: {
+    enabled: process.env.TIANAPI_API_KEY ? true : false,
+    apiKey: process.env.TIANAPI_API_KEY,
+    url: 'https://api.tianapi.com/social',
+    categoryMap: {
+      '科技': 'tech',
+      '经济': 'finance',
+      '国际': 'world',
+      '社会': 'social',
+      '文化': 'culture',
+      '文明': 'social'
+    }
+  },
+  alapi: {
+    enabled: process.env.ALAPI_API_KEY ? true : false,
+    apiKey: process.env.ALAPI_API_KEY,
+    url: 'https://v2.alapi.cn/api/news/tech',
+    categoryMap: {
+      '科技': 'tech',
+      '经济': 'finance',
+      '国际': 'world',
+      '社会': 'social',
+      '文化': 'culture',
+      '文明': 'tech'
+    }
+  }
+};
 
-// 爬虫函数
+// 统一的新闻数据格式
+function normalizeNews(data, source) {
+  try {
+    let newsItems = [];
+    
+    if (source === 'gnews') {
+      newsItems = data.articles || [];
+      return newsItems.map((item, index) => ({
+        id: index,
+        category: item.category || '国际',
+        time: item.publishedAt ? new Date(item.publishedAt).toLocaleString('zh-CN', { hour: 'numeric', minute: 'numeric', hour12: false }) + '前' : '刚刚',
+        source: item.source?.name || 'GNews',
+        title: item.title || '无标题',
+        summary: item.description || '',
+        tags: item.tags || ['新闻'],
+        importance: 3,
+        url: item.url || '#'
+      }));
+    } else if (source === 'juhe') {
+      newsItems = data.result?.data || [];
+      return newsItems.map((item, index) => ({
+        id: index,
+        category: item.category || '国际',
+        time: item.date ? new Date(item.date).toLocaleString('zh-CN', { hour: 'numeric', minute: 'numeric', hour12: false }) + '前' : '刚刚',
+        source: item.author_name || '聚合数据',
+        title: item.title || '无标题',
+        summary: item.summary || '',
+        tags: item.tags ? item.tags.split(',') : ['新闻'],
+        importance: 3,
+        url: item.url || '#'
+      }));
+    } else if (source === 'tianapi') {
+      newsItems = data.newslist || [];
+      return newsItems.map((item, index) => ({
+        id: index,
+        category: item.category || '国际',
+        time: item.ctime ? new Date(item.ctime * 1000).toLocaleString('zh-CN', { hour: 'numeric', minute: 'numeric', hour12: false }) + '前' : '刚刚',
+        source: item.source || '天行数据',
+        title: item.title || '无标题',
+        summary: item.summary || '',
+        tags: item.tags ? item.tags.split(',') : ['新闻'],
+        importance: 3,
+        url: item.url || '#'
+      }));
+    } else if (source === 'alapi') {
+      newsItems = data.data?.newslist || data.data || [];
+      return newsItems.map((item, index) => ({
+        id: index,
+        category: item.category || '国际',
+        time: item.time ? new Date(item.time).toLocaleString('zh-CN', { hour: 'numeric', minute: 'numeric', hour12: false }) + '前' : '刚刚',
+        source: item.source || 'ALAPI',
+        title: item.title || '无标题',
+        summary: item.summary || item.digest || '',
+        tags: item.tags ? item.tags.split(',') : ['新闻'],
+        importance: 3,
+        url: item.url || '#'
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('数据格式化错误:', error);
+    return [];
+  }
+}
+
+// GNews API
+async function fetchFromGNews(category) {
+  if (!CONFIG.gnews.enabled) return [];
+  
+  try {
+    const categoryMap = CONFIG.gnews.categoryMap[category] || CONFIG.gnews.categoryMap['国际'];
+    const response = await axios.get(`${CONFIG.gnews.url}?category=${categoryMap}&lang=zh&apikey=${CONFIG.gnews.apiKey}`);
+    return normalizeNews(response.data, 'gnews');
+  } catch (error) {
+    console.error('GNews API 错误:', error.message);
+    return [];
+  }
+}
+
+// 聚合数据 API
+async function fetchFromJuhe(category) {
+  if (!CONFIG.juhe.enabled) return [];
+  
+  try {
+    const categoryMap = CONFIG.juhe.categoryMap[category] || 'all';
+    const response = await axios.get(`${CONFIG.juhe.url}?type=${categoryMap}&key=${CONFIG.juhe.apiKey}`);
+    return normalizeNews(response.data, 'juhe');
+  } catch (error) {
+    console.error('聚合数据 API 错误:', error.message);
+    return [];
+  }
+}
+
+// 天行数据 API
+async function fetchFromTianapi(category) {
+  if (!CONFIG.tianapi.enabled) return [];
+  
+  try {
+    const categoryMap = CONFIG.tianapi.categoryMap[category] || 'social';
+    const response = await axios.get(`${CONFIG.tianapi.url}?key=${CONFIG.tianapi.apiKey}&num=10`);
+    return normalizeNews(response.data, 'tianapi');
+  } catch (error) {
+    console.error('天行数据 API 错误:', error.message);
+    return [];
+  }
+}
+
+// ALAPI API
+async function fetchFromAlapi(category) {
+  if (!CONFIG.alapi.enabled) return [];
+  
+  try {
+    const categoryMap = CONFIG.alapi.categoryMap[category] || 'tech';
+    let url = CONFIG.alapi.url;
+    
+    // 根据分类选择不同的 API
+    if (category === '经济') {
+      url = 'https://v2.alapi.cn/api/news/finance';
+    } else if (category === '国际') {
+      url = 'https://v2.alapi.cn/api/news/world';
+    } else if (category === '社会') {
+      url = 'https://v2.alapi.cn/api/news/social';
+    } else if (category === '文化') {
+      url = 'https://v2.alapi.cn/api/news/culture';
+    }
+    
+    const response = await axios.get(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+    
+    return normalizeNews(response.data, 'alapi');
+  } catch (error) {
+    console.error('ALAPI 错误:', error.message);
+    return [];
+  }
+}
+
+// 获取新闻数据
+app.get('/api/news', async (req, res) => {
+  const { category } = req.query;
+  const selectedCategory = category || '全部';
+  
+  try {
+    let news = [];
+    
+    // 按优先级尝试各个 API
+    const apiOrder = ['gnews', 'juhe', 'tianapi', 'alapi'];
+    
+    for (const api of apiOrder) {
+      if (CONFIG[api].enabled) {
+        const apiNews = await fetchFrom[api](selectedCategory);
+        if (apiNews.length > 0) {
+          news = [...news, ...apiNews];
+          break; // 找到数据后停止尝试其他 API
+        }
+      }
+    }
+    
+    // 如果所有 API 都失败，使用本地数据
+    if (news.length === 0) {
+      news = await scrapeNews();
+    }
+    
+    // 如果没有分类筛选，返回所有数据
+    if (!selectedCategory || selectedCategory === '全部') {
+      return res.json({ news });
+    }
+    
+    // 按分类筛选
+    const filteredNews = news.filter(item => 
+      item.category === selectedCategory || 
+      (selectedCategory === '科技' && (item.title.includes('AI') || item.title.includes('技术') || item.title.includes('科技'))) ||
+      (selectedCategory === '经济' && (item.title.includes('经济') || item.title.includes('市场') || item.title.includes('增长'))) ||
+      (selectedCategory === '国际' && (item.title.includes('国际') || item.title.includes('全球') || item.title.includes('世界'))) ||
+      (selectedCategory === '文明' && (item.title.includes('文明') || item.title.includes('能源') || item.title.includes('考古') || item.title.includes('人文')))
+    );
+    
+    res.json({ news: filteredNews });
+  } catch (error) {
+    res.status(500).json({ error: '获取新闻失败' });
+  }
+});
+
+// 获取分类
+app.get('/api/categories', (req, res) => {
+  res.json({
+    categories: ['全部', '科技', '经济', '国际', '社会', '文化', '文明']
+  });
+});
+
+// 爬虫函数（备用）
 async function scrapeNews() {
   try {
-    // 这里可以添加真实的新闻网站爬虫
-    // 由于反爬虫限制，这里先返回一些示例数据
-    // 实际部署时可以使用 Puppeteer 或其他爬虫工具
-    
     return [
       {
         id: 1,
@@ -59,78 +302,16 @@ async function scrapeNews() {
   }
 }
 
-// 从 NewsAPI 获取数据
-async function fetchFromNewsAPI() {
-  try {
-    if (NEWS_API_KEY === 'demo-key') {
-      return [];
-    }
-    
-    const response = await axios.get('https://newsapi.org/v2/top-headlines', {
-      params: {
-        apiKey: NEWS_API_KEY,
-        country: 'us',
-        pageSize: 10
-      }
-    });
-    
-    return response.data.articles.map(article => ({
-      id: Date.now() + Math.random(),
-      category: '国际',
-      time: article.publishedAt ? new Date(article.publishedAt).toLocaleString('zh-CN', { hour: 'numeric', minute: 'numeric', hour12: false }) + '前' : '刚刚',
-      source: article.source?.name || '新闻来源',
-      title: article.title,
-      summary: article.description || '',
-      tags: ['新闻'],
-      importance: 3,
-      url: article.url
-    }));
-  } catch (error) {
-    console.error('NewsAPI 错误:', error);
-    return [];
-  }
-}
-
-// 获取新闻数据
-app.get('/api/news', async (req, res) => {
-  const { category } = req.query;
-  
-  try {
-    // 尝试从 NewsAPI 获取数据
-    let news = await fetchFromNewsAPI();
-    
-    // 如果 NewsAPI 不可用，使用爬虫数据
-    if (news.length === 0) {
-      news = await scrapeNews();
-    }
-    
-    // 如果没有分类筛选，返回所有数据
-    if (!category || category === '全部') {
-      return res.json({ news });
-    }
-    
-    // 按分类筛选
-    const filteredNews = news.filter(item => 
-      item.category === category || 
-      (category === '科技' && (item.title.includes('AI') || item.title.includes('技术') || item.title.includes('科技'))) ||
-      (category === '经济' && (item.title.includes('经济') || item.title.includes('市场') || item.title.includes('增长'))) ||
-      (category === '国际' && (item.title.includes('国际') || item.title.includes('全球') || item.title.includes('世界'))) ||
-      (category === '文明' && (item.title.includes('文明') || item.title.includes('能源') || item.title.includes('考古') || item.title.includes('人文')))
-    );
-    
-    res.json({ news: filteredNews });
-  } catch (error) {
-    res.status(500).json({ error: '获取新闻失败' });
-  }
-});
-
-// 获取分类
-app.get('/api/categories', (req, res) => {
-  res.json({
-    categories: ['全部', '科技', '经济', '国际', '社会', '文化', '文明']
-  });
-});
-
 app.listen(PORT, () => {
   console.log(`服务器运行在端口 ${PORT}`);
+  console.log('已启用的 API:');
+  if (CONFIG.gnews.enabled) console.log('  - GNews API');
+  if (CONFIG.juhe.enabled) console.log('  - 聚合数据 API');
+  if (CONFIG.tianapi.enabled) console.log('  - 天行数据 API');
+  if (CONFIG.alapi.enabled) console.log('  - ALAPI');
+  if (!CONFIG.gnews.enabled && !CONFIG.juhe.enabled && !CONFIG.tianapi.enabled && !CONFIG.alapi.enabled) {
+    console.log('  - 未启用任何 API，使用本地数据');
+  }
 });
+
+export default app;
