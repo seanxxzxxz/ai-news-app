@@ -5,10 +5,15 @@ const NewsCard = ({ news }) => {
   const handleReadMore = (e) => {
     e.preventDefault();
     
-    let targetUrl = news.url;
+    let targetUrl = news.url || '';
+    
+    // 检查 URL 是否有效
+    const isValidUrl = targetUrl && 
+      targetUrl.startsWith('http://') || 
+      targetUrl.startsWith('https://');
     
     // 如果 URL 无效或为占位符，使用新闻标题进行搜索
-    if (!targetUrl || targetUrl === '#' || targetUrl.includes('example.com') || targetUrl.includes('techdaily')) {
+    if (!isValidUrl || targetUrl === '#' || targetUrl.includes('example.com') || targetUrl.includes('techdaily') || targetUrl.includes('scientificamerican')) {
       const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(news.title)}`;
       window.open(searchUrl, '_blank');
     } else {

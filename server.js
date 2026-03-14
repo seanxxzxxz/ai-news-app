@@ -170,7 +170,7 @@ async function fetchFromTianapi(category) {
   
   try {
     const categoryMap = CONFIG.tianapi.categoryMap[category] || 'social';
-    const response = await axios.get(`${CONFIG.tianapi.url}?key=${CONFIG.tianapi.apiKey}&num=10`);
+    const response = await axios.get(`${CONFIG.tianapi.url}?key=${CONFIG.tianapi.apiKey}&num=20`);
     return normalizeNews(response.data, 'tianapi');
   } catch (error) {
     console.error('天行数据 API 错误:', error.message);
@@ -285,7 +285,7 @@ async function scrapeNews() {
         time: '刚刚',
         source: '科技日报',
         title: 'AI技术突破：新一代语言模型展现惊人推理能力',
-        summary: '最新研究表明，新一代大语言模型在复杂推理任务中表现显著提升，能够处理多步骤逻辑问题。专家认为这将推动AI在科研、医疗等领域的应用突破。',
+        summary: '最新研究表明，新一代大语言模型在复杂推理任务中表现显著提升，能够处理多步骤逻辑问题。专家认为这将推动AI在科研、医疗等领域的应用突破。模型在数学推理、代码生成和常识理解方面取得重大进展，有望在未来两年内实现商业化应用。',
         tags: ['人工智能', '深度学习', '技术创新'],
         importance: 5,
         url: 'https://www.techdaily.com/ai-breakthrough'
@@ -296,21 +296,120 @@ async function scrapeNews() {
         time: '1小时前',
         source: '经济观察报',
         title: '全球经济增长预期上调，新兴市场表现亮眼',
-        summary: '国际货币基金组织最新报告显示，2024年全球经济增长预期从3.1%上调至3.4%。主要得益于亚洲新兴市场的强劲表现。',
+        summary: '国际货币基金组织最新报告显示，2024年全球经济增长预期从3.1%上调至3.4%。主要得益于亚洲新兴市场的强劲表现和欧美经济复苏超预期。专家提醒仍需关注通胀压力和地缘政治风险，但整体经济前景向好。',
         tags: ['宏观经济', '市场分析', '全球经济'],
         importance: 4,
         url: 'https://www.economist.com/growth-upgrade'
       },
       {
         id: 3,
-        category: '文明',
+        category: '国际',
         time: '2小时前',
+        source: '环球时报',
+        title: '气候变化应对新进展：多国承诺加大减排力度',
+        summary: '在最新气候峰会上，主要经济体宣布了更积极的减排目标，承诺到2030年将碳排放减少50%。可再生能源投资大幅增加，清洁技术发展迅速。科学家表示这是应对气候变化的关键一步，全球绿色转型进程有望加速。',
+        tags: ['气候变化', '环保', '国际合作'],
+        importance: 5,
+        url: 'https://www.globaltimes.cn/climate-action'
+      },
+      {
+        id: 4,
+        category: '科技',
+        time: '3小时前',
+        source: '36氪',
+        title: '量子计算商业化进程加速，多家企业推出实用解决方案',
+        summary: '量子计算技术正从实验室走向商业应用。IBM、谷歌等公司推出面向企业的量子计算服务，在金融建模、药物研发等领域展现潜力。专家预测未来5年内量子计算将实现重大突破，开启计算新时代。',
+        tags: ['量子计算', '商业化', '前沿技术'],
+        importance: 4,
+        url: 'https://36kr.com/quantum-computing'
+      },
+      {
+        id: 5,
+        category: '社会',
+        time: '4小时前',
+        source: '澎湃新闻',
+        title: '远程办公模式演变：混合办公成为新常态',
+        summary: '疫情后远程办公模式持续演变，混合办公成为主流选择。调查显示，70%的企业采用灵活办公制度，员工满意度和工作效率双提升。专家建议企业建立完善的远程管理体系，平衡工作效率与员工福祉。',
+        tags: ['工作方式', '社会趋势', '企业管理'],
+        importance: 3,
+        url: 'https://www.thepaper.cn/remote-work'
+      },
+      {
+        id: 6,
+        category: '文化',
+        time: '5小时前',
+        source: '南方周末',
+        title: '数字文化遗产保护：新技术助力传统文化传承',
+        summary: '数字化技术为文化遗产保护带来新机遇。3D扫描、VR技术让文物以数字形式永久保存，线上展览让更多人接触传统文化。专家呼吁加强数字文化遗产的国际合作与标准制定，推动文化传承创新发展。',
+        tags: ['文化传承', '数字技术', '遗产保护'],
+        importance: 3,
+        url: 'https://www.infzm.com/cultural-heritage'
+      },
+      {
+        id: 7,
+        category: '文明',
+        time: '6小时前',
         source: '科学美国人',
-        title: '核聚变能源突破：实现净能量增益',
-        summary: '国际科研团队在核聚变研究中取得历史性突破，首次实现净能量增益。这一里程碑式进展意味着可控核聚变能源有望在未来10-20年内实现商业化。',
+        title: '核聚变能源突破：实现净能量增益，人类能源未来迎来转折点',
+        summary: '国际科研团队在核聚变研究中取得历史性突破，首次实现净能量增益。这一里程碑式进展意味着可控核聚变能源有望在未来10-20年内实现商业化。专家表示这将彻底改变人类能源结构，为解决气候变化问题提供终极方案。',
         tags: ['核聚变', '清洁能源', '能源革命'],
         importance: 5,
         url: 'https://www.scientificamerican.com/fusion-breakthrough'
+      },
+      {
+        id: 8,
+        category: '文明',
+        time: '7小时前',
+        source: '自然杂志',
+        title: '考古重大发现：距今1万年前的古代文明遗址揭示人类社会起源新线索',
+        summary: '考古学家在中东地区发现距今1万年前的古代文明遗址，出土了大量文物和建筑遗迹。这一发现将人类文明起源时间提前了2000年，为研究人类社会起源和演变提供了关键证据。专家称这是21世纪最重要的考古发现之一。',
+        tags: ['考古发现', '人类起源', '文明史'],
+        importance: 5,
+        url: 'https://www.nature.com/archaeology'
+      },
+      {
+        id: 9,
+        category: '文明',
+        time: '8小时前',
+        source: '哲学时报',
+        title: '人工智能伦理新思想：全球学者提出"数字人文主义"框架',
+        summary: '来自20多个国家的顶尖学者联合提出"数字人文主义"思想框架，为人工智能发展提供伦理指导。该框架强调技术发展必须以人类福祉为核心，引发了全球范围内的热烈讨论。专家认为这将影响未来十年的人工智能发展方向。',
+        tags: ['人工智能伦理', '数字人文', '思想创新'],
+        importance: 4,
+        url: 'https://www.philosophytimes.com/ai-ethics'
+      },
+      {
+        id: 10,
+        category: '科技',
+        time: '9小时前',
+        source: '科技日报',
+        title: '脑机接口技术取得突破：瘫痪患者成功控制机械臂',
+        summary: '神经科学家成功开发新型脑机接口系统，让瘫痪患者能够通过思维控制机械臂完成精细操作。这项技术有望在未来5年内投入临床应用，为数百万行动障碍患者带来新希望。专家认为这是神经工程领域的重大突破。',
+        tags: ['脑机接口', '医疗科技', '神经工程'],
+        importance: 5,
+        url: 'https://www.techdaily.com/brain-computer-interface'
+      },
+      {
+        id: 11,
+        category: '经济',
+        time: '10小时前',
+        source: '财经时报',
+        title: '全球绿色金融市场规模突破万亿美元大关',
+        summary: '根据最新统计，全球绿色金融市场规模已突破万亿美元，年增长率达25%。可再生能源项目、电动汽车产业和可持续农业成为投资热点。专家预测未来三年绿色金融将继续保持高速增长，推动全球经济绿色转型。',
+        tags: ['绿色金融', '可持续发展', '投资趋势'],
+        importance: 4,
+        url: 'https://www.financeTimes.com/green-finance'
+      },
+      {
+        id: 12,
+        category: '国际',
+        time: '11小时前',
+        source: '世界邮报',
+        title: '多国签署人工智能安全国际合作协议',
+        summary: '包括美国、中国、欧盟在内的20个国家签署人工智能安全国际合作协议，承诺共同制定AI安全标准和监管框架。协议涵盖AI武器化、深度伪造和隐私保护等关键议题。专家认为这是全球AI治理的重要里程碑。',
+        tags: ['人工智能安全', '国际合作', '全球治理'],
+        importance: 5,
+        url: 'https://www.worldpost.ai/safety-protocol'
       }
     ];
   } catch (error) {
@@ -335,11 +434,15 @@ app.listen(PORT, () => {
 // AI 摘要生成函数
 async function generateAISummary(title, content) {
   if (!CONFIG.qwen.enabled) {
-    return content ? content.substring(0, 200) + '...' : '';
+    return content ? content.substring(0, 300) + '...' : '';
   }
   
   try {
-    const prompt = `你是一个专业的新闻编辑，请根据以下新闻标题和内容，生成一段简洁、专业的新闻摘要（不超过 150 字），突出新闻的核心价值和影响：
+    const prompt = `你是一个专业的新闻编辑，请根据以下新闻标题和内容，生成一段详细、专业的新闻摘要（不超过 400 字），包含以下要点：
+1. 新闻的核心事件和关键信息
+2. 涉及的重要人物、机构或组织
+3. 事件的影响范围和重要性
+4. 专家观点或未来展望
 
 新闻标题：${title}
 
@@ -367,10 +470,10 @@ async function generateAISummary(title, content) {
       }
     );
 
-    return response.data?.output?.text || content?.substring(0, 200) + '...' || '';
+    return response.data?.output?.text || content?.substring(0, 300) + '...' || '';
   } catch (error) {
     console.error('AI 摘要生成失败:', error.message);
-    return content ? content.substring(0, 200) + '...' : '';
+    return content ? content.substring(0, 300) + '...' : '';
   }
 }
 
