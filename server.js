@@ -61,6 +61,12 @@ const CONFIG = {
       '文化': 'culture',
       '文明': 'tech'
     }
+  },
+  qwen: {
+    enabled: process.env.QWEN_API_KEY ? true : false,
+    apiKey: process.env.QWEN_API_KEY,
+    model: 'qwen-plus',
+    url: 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
   }
 };
 
@@ -233,6 +239,11 @@ app.get('/api/news', async (req, res) => {
     
     // 如果没有分类筛选，返回所有数据
     if (!selectedCategory || selectedCategory === '全部') {
+      // 使用 AI 进行评估和排序
+      if (CONFIG.qwen.enabled && news.length > 0) {
+        const evaluatedNews = await evaluateNews(news);
+        return res.json({ news: evaluatedNews });
+      }
       return res.json({ news });
     }
     
@@ -244,6 +255,12 @@ app.get('/api/news', async (req, res) => {
       (selectedCategory === '国际' && (item.title.includes('国际') || item.title.includes('全球') || item.title.includes('世界'))) ||
       (selectedCategory === '文明' && (item.title.includes('文明') || item.title.includes('能源') || item.title.includes('考古') || item.title.includes('人文')))
     );
+    
+    // 使用 AI 进行评估和排序
+    if (CONFIG.qwen.enabled && filteredNews.length > 0) {
+      const evaluatedNews = await evaluateNews(filteredNews);
+      return res.json({ news: evaluatedNews });
+    }
     
     res.json({ news: filteredNews });
   } catch (error) {
@@ -309,9 +326,137 @@ app.listen(PORT, () => {
   if (CONFIG.juhe.enabled) console.log('  - 聚合数据 API');
   if (CONFIG.tianapi.enabled) console.log('  - 天行数据 API');
   if (CONFIG.alapi.enabled) console.log('  - ALAPI');
-  if (!CONFIG.gnews.enabled && !CONFIG.juhe.enabled && !CONFIG.tianapi.enabled && !CONFIG.alapi.enabled) {
+  if (CONFIG.qwen.enabled) console.log('  - 阿里云千问 AI 模型');
+  if (!CONFIG.gnews.enabled && !CONFIG.juhe.enabled && !CONFIG.tianapi.enabled && !CONFIG.alapi.enabled && !CONFIG.qwen.enabled) {
     console.log('  - 未启用任何 API，使用本地数据');
   }
 });
+
+// AI 摘要生成函数
+async function generateAISummary(title, content) {
+  if (!CONFIG.qwen.enabled) {
+    return content ? content.substring(0, 200) + '...' : '';
+  }
+  
+  try {
+    const prompt = `你是一个专业的新闻编辑，请根据以下新闻标题和内容，生成一段简洁、专业的新闻摘要（不超过 150 字），突出新闻的核心价值和影响：
+
+新闻标题：${title}
+
+新闻内容：${content || '无详细内容'}
+
+请生成摘要：`;
+
+    const response = await axios.post(
+      CONFIG.qwen.url,
+      {
+        model: CONFIG.qwen.model,
+        input: {
+          prompt: prompt
+        },
+        parameters: {
+          result_format: 'text'
+        }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${CONFIG.qwen.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+
+    return response.data?.output?.text || content?.substring(0, 200) + '...' || '';
+  } catch (error) {
+    console.error('AI 摘要生成失败:', error.message);
+    return content ? content.substring(0, 200) + '...' : '';
+  }
+}
+
+// AI 新闻评估和排序函数
+async function evaluateNews(newsArray) {
+  if (!CONFIG.qwen.enabled) {
+    return newsArray.map((news, index) => ({
+      ...news,
+      importance: Math.min(5, Math.floor(Math.random() * 3) + 3)
+    }));
+  }
+  
+  try {
+    const newsText = newsArray.map((news, index) => 
+      `${index + 1}. [${news.category}] ${news.title} - ${news.summary.substring(0, 100)}`
+    ).join('\n');
+
+    const prompt = `你是一个专业的新闻编辑，请评估以下新闻列表，为每条新闻分配重要度（1-5星，5星为最重要），并按重要度排序。重要度评估标准：
+- 5星：具有全球性影响、重大突破、改变行业格局
+- 4星：重要行业影响、区域性重大事件
+- 3星：一般重要、行业动态
+- 2星：次要信息、补充性内容
+- 1星：娱乐性、低价值内容
+
+请以 JSON 格式返回评估结果：
+{
+  "evaluations": [
+    {
+      "index": 新闻索引,
+      "importance": 重要度(1-5),
+      "reason": "评估理由"
+    }
+  ]
+}
+
+新闻列表：
+${newsText}
+
+请返回评估结果：`;
+
+    const response = await axios.post(
+      CONFIG.qwen.url,
+      {
+        model: CONFIG.qwen.model,
+        input: {
+          prompt: prompt
+        },
+        parameters: {
+          result_format: 'text'
+        }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${CONFIG.qwen.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      }
+    );
+
+    const resultText = response.data?.output?.text || '{}';
+    
+    try {
+      const result = JSON.parse(resultText);
+      if (result.evaluations && Array.isArray(result.evaluations)) {
+        return result.evaluations.map(evalItem => ({
+          ...newsArray[evalItem.index],
+          importance: evalItem.importance,
+          ai_reason: evalItem.reason
+        }));
+      }
+    } catch (parseError) {
+      console.error('解析 AI 评估结果失败:', parseError.message);
+    }
+    
+    return newsArray.map((news, index) => ({
+      ...news,
+      importance: Math.min(5, Math.floor(Math.random() * 3) + 3)
+    }));
+  } catch (error) {
+    console.error('AI 评估失败:', error.message);
+    return newsArray.map((news, index) => ({
+      ...news,
+      importance: Math.min(5, Math.floor(Math.random() * 3) + 3)
+    }));
+  }
+}
 
 export default app;
