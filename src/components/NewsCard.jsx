@@ -4,10 +4,15 @@ import './NewsCard.css';
 const NewsCard = ({ news }) => {
   const handleReadMore = (e) => {
     e.preventDefault();
-    if (news.url && news.url !== '#') {
-      window.open(news.url, '_blank');
+    
+    let targetUrl = news.url;
+    
+    // 如果 URL 无效或为占位符，使用新闻标题进行搜索
+    if (!targetUrl || targetUrl === '#' || targetUrl.includes('example.com') || targetUrl.includes('techdaily')) {
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(news.title)}`;
+      window.open(searchUrl, '_blank');
     } else {
-      alert('当前为演示数据，暂无原文链接。您可以复制以下内容进行测试：\n\n' + news.title + '\n\n' + news.summary);
+      window.open(targetUrl, '_blank');
     }
   };
 
